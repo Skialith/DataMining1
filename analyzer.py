@@ -2,17 +2,19 @@
 import multiprocessing
 import os
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 from gensim.models.word2vec import LineSentence, Word2Vec
+from gensim import corpora, models
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn import manifold
+from mlxtend.preprocessing import TransactionEncoder
+from mlxtend.frequent_patterns import apriori, association_rules
 
-# from matplotlib.font_manager import FontProperties
-# font = FontProperties(fname=r"/usr/local/share/fonts/simhei.ttf", size=14)
 
-mpl.rcParams['font.sans-serif'] = ['AR PL UMing CN']  # 指定默认字体
+mpl.rcParams['font.sans-serif'] = ['simhei']  # 指定默认字体
 plt.rcParams['axes.unicode_minus'] = False  # 显示负号
 
 
@@ -36,10 +38,43 @@ class Analyzer(object):
         self.tfidf_word_vector = self._author_word_vector(cut_result.author_poetry_dict)
         print("calculating poets' w2v word vector...")
         self.w2v_model, self.w2v_word_vector = self._word2vec(cut_result.author_poetry_dict)
+        print("Calculating poets' LDA topics...")
+        self.lda_model, self.lda_topics = self._lda_topics(cut_result.author_poetry_dict)
+        print("Analyzing frequent patterns and association rules...")
+        self.frequent_itemsets, self.rules = self.find_frequent_patterns()
         print("use t-sne for dimensionality reduction...")
         self.tfidf_word_vector_tsne = self._tsne(self.tfidf_word_vector)
         self.w2v_word_vector_tsne = self._tsne(self.w2v_word_vector)
         print("result saved.")
+
+    def find_frequent_patterns(self, min_support=0.1):
+        """Identify frequent patterns and association rules in the poetry corpus."""
+        texts = [doc.split() for doc in self.cut_result.author_poetry_dict.values()]
+        te = TransactionEncoder()
+        te_ary = te.fit_transform(texts)
+        df = pd.DataFrame(te_ary, columns=te.columns_)
+
+        # Applying Apriori to find frequent itemsets
+        frequent_itemsets = apriori(df, min_support=min_support, use_colnames=True)
+
+        # Generating association rules
+        rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=0.5)
+        return frequent_itemsets, rules
+
+    @staticmethod
+    def _lda_topics(author_poetry_dict):
+        """Generate LDA topics from the poetry corpus."""
+        # Prepare texts
+        texts = [doc.split() for doc in author_poetry_dict.values()]
+        # Create a dictionary representation of the documents.
+        dictionary = corpora.Dictionary(texts)
+        # Convert dictionary to a bag of words corpus
+        corpus = [dictionary.doc2bow(text) for text in texts]
+
+        # Generate LDA model
+        lda = models.LdaModel(corpus, num_topics=10, id2word=dictionary, passes=15)
+        topics = lda.print_topics(num_words=4)
+        return lda, topics
 
     @staticmethod
     def _author_word_vector(author_poetry_dict):
@@ -59,7 +94,7 @@ class Analyzer(object):
         poetry = list(author_poetry_dict.values())
         with open("cut_poetry", 'w') as f:
             f.write("\n".join(poetry))
-        model = Word2Vec(LineSentence("cut_poetry"), size=dimension, min_count=15,
+        model = Word2Vec(LineSentence("cut_poetry"), vector_size=dimension, min_count=15,
                          workers=multiprocessing.cpu_count())
         word_vector = []
         for i, author in enumerate(authors):
@@ -69,7 +104,7 @@ class Analyzer(object):
             for word in words:
                 word = word.strip()
                 try:
-                    vec += model[word]
+                    vec += model.wv[word]
                     count += 1
                 except KeyError:  # 有的词语不满足min_count则不会被记录在词表中
                     pass
@@ -79,6 +114,7 @@ class Analyzer(object):
 
     @staticmethod
     def _tsne(word_vector):
+        word_vector = np.array(word_vector)
         t_sne = manifold.TSNE(n_components=2, init='pca', random_state=0)
         word_vector_tsne = t_sne.fit_transform(word_vector)
         return word_vector_tsne
@@ -106,7 +142,7 @@ class Analyzer(object):
         return self.authors[min_index]
 
     def find_similar_word(self, word):
-        return self.w2v_model.most_similar(word)
+        return self.w2v_model.wv.most_similar(word)
 
 
 def plot_vectors(X, target):

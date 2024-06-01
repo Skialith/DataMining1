@@ -37,9 +37,6 @@ class CutResult(object):
 def _is_chinese(c):
     return '\u4e00' <= c <= '\u9fff'
 
-
-from tqdm import tqdm
-
 def cut_poetry(filename, saved_dir):
     """
     对全唐诗分词
