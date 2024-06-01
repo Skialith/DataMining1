@@ -83,7 +83,7 @@ class Analyzer(object):
     def _author_word_vector(author_poetry_dict):
         """用tf-idf为标准解析每个作者的词向量"""
         poetry = list(author_poetry_dict.values())
-        vectorizer = CountVectorizer(min_df=15)
+        vectorizer = CountVectorizer(min_df=15) # 只考虑在至少15篇诗中出现的词汇
         word_matrix = vectorizer.fit_transform(poetry).toarray()
         transformer = TfidfTransformer()
         tfidf_word_vector = transformer.fit_transform(word_matrix).toarray()
