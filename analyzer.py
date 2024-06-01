@@ -25,6 +25,9 @@ class Analyzer(object):
     tfidf_word_vector: 用tf-idf为标准得到的词向量
     w2v_word_vector: 用word2vector得到的词向量
     w2v_model: 用word2vector得到的model
+    lda_model：lda 主题分析结果
+    frequent_itemsets：
+    rules：
     tfidf_word_vector_tsne: 降维后的词向量
     w2v_word_vector_tsne: 降维后的词向量
     """
