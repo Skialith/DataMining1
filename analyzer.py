@@ -5,14 +5,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import pyfpgrowth
 from gensim.models.word2vec import LineSentence, Word2Vec
 from gensim import corpora, models
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn import manifold
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import apriori, association_rules
-from nltk.corpus import stopwords
 from gensim.models import CoherenceModel
 
 mpl.rcParams['font.sans-serif'] = ['simhei']  # 指定默认字体
@@ -43,7 +41,7 @@ class Analyzer(object):
         print("calculating poets' w2v word vector...")
         self.w2v_model, self.w2v_word_vector = self._word2vec(cut_result.author_poetry_dict)
         print("Calculating poets' LDA topics...")
-        # self.lda_model, self.lda_topics = self._lda_topics(cut_result.author_poetry_dict)
+        #self.lda_model, self.lda_topics = self._lda_topics(cut_result.author_poetry_dict)
         print("Analyzing frequent patterns and association rules...")
         self.frequent_itemsets, self.rules = self.find_frequent_patterns()
         print("use t-sne for dimensionality reduction...")
@@ -53,8 +51,9 @@ class Analyzer(object):
 
     def find_frequent_patterns(self, min_support=0.1):
         """Identify frequent patterns and association rules in the poetry corpus."""
-        stop_words = '而|何|乎|乃|其|且|所|为|焉|以|因|于|与|也|则|者|之|不|自|得|一|来|去|无|可|是|已|此|的|上|中|兮|三|下'
-        texts = [[word for word in doc.split() if word not in stop_words] for doc in self.cut_result.author_poetry_dict.values()]
+        stop_words = '而|何|乎|乃|其|且|所|为|焉|以|因|于|与|也|则|者|之|不|自|得|一|来|去|无|可|是|已|此|的|上|中|兮|三|下|有|'
+        texts = [[word for word in doc.split() if word not in stop_words] for doc in
+                 self.cut_result.author_poetry_dict.values()]
         te = TransactionEncoder()
         te_ary = te.fit_transform(texts)
         df = pd.DataFrame(te_ary, columns=te.columns_)
@@ -66,12 +65,16 @@ class Analyzer(object):
         rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=0.5)
         print(frequent_itemsets)
         print(rules)
-        return frequent_itemsets, rules
 
+        # Save the frequent itemsets and rules to CSV files
+        frequent_itemsets.to_csv('frequent_itemsets.csv', index=False)
+        rules.to_csv('association_rules.csv', index=False)
+
+        return frequent_itemsets, rules
     def _lda_topics(author_poetry_dict):
         """Generate LDA topics from the poetry corpus."""
         # Prepare texts
-        stop_words = set(stopwords.words('chinese'))  # 需要有适合中文的停用词列表
+        stop_words = '而|何|乎|乃|其|且|所|为|焉|以|因|于|与|也|则|者|之|不|自|得|一|来|去|无|可|是|已|此|的|上|中|兮|三|下|有|'  # 需要有适合中文的停用词列表
         texts = [[word for word in doc.split() if word not in stop_words] for doc in author_poetry_dict.values()]
         # Create a dictionary representation of the documents.
         dictionary = corpora.Dictionary(texts)
@@ -161,15 +164,53 @@ class Analyzer(object):
         return self.w2v_model.wv.most_similar(word)
 
 
-def plot_vectors(X, target):
-    """绘制结果"""
+def plot_vectors(X, target, width=25, height=15):
+    """绘制结果，调整图形的宽度和高度以及坐标轴设置"""
     x_min, x_max = np.min(X, 0), np.max(X, 0)
-    X = (X - x_min) / (x_max - x_min)
+    X = (X - x_min) / (x_max - x_min)  # 归一化处理
 
-    plt.figure()
+    plt.figure(figsize=(width, height))  # 设置图形的尺寸
+    ax = plt.gca()  # 获取当前的Axes对象
+    ax.set_aspect('auto')  # 设置自动调整长宽比
+
+    # 绘制文本
     for i in range(X.shape[0]):
         plt.text(X[i, 0], X[i, 1], target[i],
-                 # color=plt.cm.Set1(y[i] / 10.),
-                 fontdict={'weight': 'bold', 'size': 10}
-                 )
+                 fontdict={'weight': 'bold', 'size': 9})
+
+    # 设置横坐标刻度
+    x_ticks = np.linspace(0, 1, 20)  # 在0到1之间等间隔生成20个刻度点
+    x_labels = [f"{x:.2f}" for x in x_ticks]  # 创建刻度标签
+    plt.xticks(x_ticks, x_labels, rotation=45)  # 设置横坐标刻度及标签，并旋转45度以防重叠
+
+    plt.xlabel('Dimension 1')  # 添加x轴标签
+    plt.ylabel('Dimension 2')
+    plt.grid(True)  # 显示网格
+    plt.show()
+
+def plot_vectors2(X, target, width=21, height=14):
+    """绘制结果并放大指定的坐标区域"""
+    x_min, x_max = np.min(X, 0), np.max(X, 0)
+    X = (X - x_min) / (x_max - x_min)  # 归一化处理
+
+    plt.figure(figsize=(width, height))  # 设置图形的尺寸
+    ax = plt.gca()  # 获取当前的Axes对象
+    ax.set_aspect('auto')  # 设置自动调整长宽比
+
+    # 绘制文本
+    for i in range(X.shape[0]):
+        plt.text(X[i, 0], X[i, 1], target[i],
+                 fontdict={'weight': 'bold', 'size': 9})
+
+    # 设置坐标轴显示范围，专注于0.3到0.7的区间
+    plt.xlim(0.35, 0.65)
+    plt.ylim(0.1, 0.7)
+
+    # 设置横坐标和纵坐标的刻度，以适应新的显示范围
+    plt.xticks(np.linspace(0.35, 0.65, 5), rotation=45)  # 创建5个横坐标刻度
+    plt.yticks(np.linspace(0.1, 0.7, 7))  # 创建7个纵坐标刻度
+    plt.xlabel('Dimension 1')  # 添加x轴标签
+    plt.ylabel('Dimension 2')
+    plt.title('Zoomed Visualization of Word Vectors')
+    plt.grid(True)  # 显示网格
     plt.show()
