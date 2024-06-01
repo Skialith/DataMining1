@@ -27,6 +27,10 @@ def example():
     plot_vectors(tf_idf_vector_list, author_list)
     plot_vectors(w2v_vector_list, author_list)
 
+    #print("LDA Topics:")
+    #for topic in analyzer.lda_topics:
+    #    print(topic)
+
     print("**基于统计的分析")
     print("写作数量排名：")
     print_counter(result.author_counter.most_common(10))
@@ -51,8 +55,11 @@ def example():
     print("最常见的形容词：")
     print_counter(result.word_property_counter_dict['a'].most_common(10))
 
-    print("**基于词向量的分析")
-    for word in ["春", "鸳鸯", "垂柳", "枕"]:
+    print("最常见的动词：")
+    print_counter(result.word_property_counter_dict['v'].most_common(10))
+
+    print("基于词向量的分析")
+    for word in ["春","梅","鸳鸯", "垂柳", "枕"]:
         print("与 %s 相关的词：" % word)
         print_counter(analyzer.find_similar_word(word))
 
