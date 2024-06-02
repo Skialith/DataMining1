@@ -211,6 +211,5 @@ def plot_vectors2(X, target, width=21, height=14):
     plt.yticks(np.linspace(0.1, 0.7, 7))  # 创建7个纵坐标刻度
     plt.xlabel('Dimension 1')  # 添加x轴标签
     plt.ylabel('Dimension 2')
-    plt.title('Zoomed Visualization of Word Vectors')
     plt.grid(True)  # 显示网格
     plt.show()
